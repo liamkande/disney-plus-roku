@@ -4,6 +4,10 @@
   "description": "Disney+ Roku app built in TypeScript demonstrating BrightScript patterns",
   "private": true,
   "author": "Liam Ansoumane Kande",
+  "gitRepository": {
+    "type": "git",
+    "url": "https://github.com/liamkande/disney-plus-roku"
+  },
   "license": "MIT",
   "scripts": {
     "start": "react-scripts start",
@@ -44,12 +48,6 @@
   },
   "prettier": {
     "semi": false
-  },
-  "eslintConfig": {
-    "extends": [
-      "react-app",
-      "react-app/jest"
-    ]
   },
   "browserslist": {
     "production": [

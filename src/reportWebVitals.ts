@@ -1,4 +1,5 @@
 import { ReportHandler } from "web-vitals"
+// This file is used to measure the performance of your app.
 
 const reportWebVitals = (onPerfEntry?: ReportHandler) => {
   if (onPerfEntry && onPerfEntry instanceof Function) {

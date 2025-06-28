@@ -1,3 +1,14 @@
+/**
+ * Entry point for the React application
+ *
+ * In BrightScript, this would be equivalent to the main.brs file:
+ * sub Main()
+ *     screen = CreateObject("roSGScreen")
+ *     scene = screen.CreateScene("HomeScreen")
+ *     screen.show()
+ * end sub
+ */
+
 import React from "react"
 import ReactDOM from "react-dom/client"
 import "./index.css"
