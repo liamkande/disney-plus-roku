@@ -12,6 +12,7 @@
  */
 
 import React, { useEffect, useState } from "react"
+import { LoadingIndicator } from "../LoadingIndicator/LoadingIndicator"
 import {
   ContentContainer,
   HomeScreenContainer,
@@ -35,7 +36,7 @@ export const HomeScreen: React.FC = () => {
     // Simulate loading delay
     const timer = setTimeout(() => {
       setIsLoading(false)
-    }, 1000)
+    }, 2000)
 
     return () => clearTimeout(timer)
   }, [])
@@ -44,7 +45,7 @@ export const HomeScreen: React.FC = () => {
     <HomeScreenContainer>
       {isLoading ? (
         <LoadingContainer>
-          <h1>Loading magical content...</h1>
+          <LoadingIndicator />
         </LoadingContainer>
       ) : (
         <ContentContainer className="loaded">
