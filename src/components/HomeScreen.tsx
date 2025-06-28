@@ -8,30 +8,51 @@
  *         <field id="focusedContent" type="node" alwaysNotify="true"/>
  *     </interface>
  *     <script type="text/brightscript" uri="HomeScreen.brs"/>
- *     <children>
- *         <Rectangle width="1920" height="1080" color="0x1a1d29FF" />
- *         <Label text="Disney+ Clone" />
- *     </children>
  * </component>
  */
 
-import React from "react"
+import React, { useEffect, useState } from "react"
+import {
+  ContentContainer,
+  HomeScreenContainer,
+  LoadingContainer,
+} from "./HomeScreen.styles"
 
 export const HomeScreen: React.FC = () => {
+  const [isLoading, setIsLoading] = useState(true)
+
+  /**
+   * Simulate initial load
+   *
+   * In BrightScript:
+   * sub init()
+   *     m.loadingLabel = m.top.findNode("loadingLabel")
+   *     m.contentContainer = m.top.findNode("contentContainer")
+   *     loadHomeContent()
+   * end sub
+   */
+  useEffect(() => {
+    // Simulate loading delay
+    const timer = setTimeout(() => {
+      setIsLoading(false)
+    }, 1000)
+
+    return () => clearTimeout(timer)
+  }, [])
+
   return (
-    <div
-      style={{
-        width: "100vw",
-        height: "100vh",
-        backgroundColor: "#1a1d29",
-        color: "white",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        fontFamily: "Arial, sans-serif",
-      }}
-    >
-      <h1>Disney+ Clone - HomeScreen Component</h1>
-    </div>
+    <HomeScreenContainer>
+      {isLoading ? (
+        <LoadingContainer>
+          <h1>Loading magical content...</h1>
+        </LoadingContainer>
+      ) : (
+        <ContentContainer className="loaded">
+          <h1 style={{ color: "white", padding: "50px" }}>
+            Disney+ Content Will Load Here
+          </h1>
+        </ContentContainer>
+      )}
+    </HomeScreenContainer>
   )
 }
