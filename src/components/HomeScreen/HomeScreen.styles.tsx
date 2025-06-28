@@ -32,7 +32,7 @@ export const BackgroundGradient = styled.div`
   /* Bottom border like Disney+ */
   &::after {
     content: "";
-    position: absolute;
+    position: relative;
     bottom: 0;
     left: 0;
     right: 0;
@@ -74,8 +74,8 @@ export const LoadingContainer = styled.div`
 `
 
 export const ContentContainer = styled.div`
-  width: 100%;
-  height: 100%;
+  width: 100vw;
+  height: 100vh;
   opacity: 0;
   transition: opacity 0.3s ease-in;
 
