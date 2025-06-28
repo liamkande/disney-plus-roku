@@ -1,8 +1,25 @@
 {
-  "name": "disney-plus-roku",
-  "version": "0.1.0",
+  "name": "disney-plus-roku-clone",
+  "version": "1.0.0",
+  "description": "Disney+ Roku app built in TypeScript demonstrating BrightScript patterns",
   "private": true,
+  "author": "Liam Ansoumane Kande",
+  "license": "MIT",
+  "scripts": {
+    "start": "react-scripts start",
+    "build": "react-scripts build",
+    "test": "react-scripts test",
+    "eject": "react-scripts eject"
+  },
   "dependencies": {
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "react-scripts": "5.0.1",
+    "typescript": "^4.9.5",
+    "styled-components": "^5.3.9",
+    "axios": "^1.3.4",
+    "framer-motion": "^10.0.0",
+    "web-vitals": "^2.1.4",
     "@testing-library/dom": "^10.4.0",
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^16.3.0",
@@ -10,18 +27,13 @@
     "@types/jest": "^27.5.2",
     "@types/node": "^16.18.126",
     "@types/react": "^19.1.8",
-    "@types/react-dom": "^19.1.6",
-    "react": "^19.1.0",
-    "react-dom": "^19.1.0",
-    "react-scripts": "5.0.1",
-    "typescript": "^4.9.5",
-    "web-vitals": "^2.1.4"
+    "@types/react-dom": "^19.1.6"
   },
-  "scripts": {
-    "start": "react-scripts start",
-    "build": "react-scripts build",
-    "test": "react-scripts test",
-    "eject": "react-scripts eject"
+  "devDependencies": {
+    "@types/react": "^19.1.8",
+    "@types/react-dom": "^19.1.6",
+    "@types/styled-components": "^5.1.26",
+    "@types/node": "^16.18.14"
   },
   "eslintConfig": {
     "extends": [
