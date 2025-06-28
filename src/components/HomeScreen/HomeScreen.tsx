@@ -11,10 +11,11 @@
  * </component>
  */
 
-import React, { useEffect, useState } from "react"
+import React, { useCallback, useEffect, useState } from "react"
 import { LoadingIndicator } from "../LoadingIndicator/LoadingIndicator"
+import { ContentRow } from "../ContentRow/ContentRow"
 import { apiService } from "../../services/api.service"
-import { Container, HomeData } from "../../types/disney.types"
+import { Container, ContentItem, HomeData } from "../../types/disney.types"
 import {
   BackgroundGradient,
   ContentContainer,
@@ -28,6 +29,8 @@ export const HomeScreen: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [homeData, setHomeData] = useState<HomeData | null>(null)
+  const [focusedPosition, setFocusedPosition] = useState({ row: 0, col: 0 })
+  const [rowItemCounts, setRowItemCounts] = useState<number[]>([])
 
   /**
    * Load home content on mount
@@ -62,22 +65,12 @@ export const HomeScreen: React.FC = () => {
         console.log("[BrightScript] Content loaded successfully")
         setHomeData(data)
 
-        // Log what we received for debugging
+        // Initialize row item counts
         if (data?.data?.StandardCollection?.containers) {
-          const containerCount = data.data.StandardCollection.containers.length
-          console.log(`[BrightScript] Loaded ${containerCount} content rows`)
-
-          // Log each container type
-          data.data.StandardCollection.containers.forEach(
-            (container, index) => {
-              const setType = container.set.type
-              const itemCount = container.set.items?.length || 0
-              const refId = container.set.refId
-              console.log(
-                `[BrightScript] Row ${index}: ${setType}${refId ? ` (refId: ${refId})` : ""} - ${itemCount} items`,
-              )
-            },
+          const counts = data.data.StandardCollection.containers.map(
+            (container) => container.set.items?.length || 0,
           )
+          setRowItemCounts(counts)
         }
       } catch (err) {
         console.error("[BrightScript] Failed to load home content:", err)
@@ -93,13 +86,99 @@ export const HomeScreen: React.FC = () => {
   }, [])
 
   /**
-   * Render loading state
+   * Handle when ref set items are loaded
+   * Updates the item count for navigation
    *
    * In BrightScript:
-   * if m.isLoading
-   *     m.loadingIndicator.visible = true
-   *     m.contentContainer.visible = false
-   * end if
+   * sub onRefSetLoaded(event as Object)
+   *     data = event.getData()
+   *     m.rowItemCounts[data.rowIndex] = data.items.count()
+   * end sub
+   */
+  const handleItemsLoaded = useCallback(
+    (rowIndex: number, items: ContentItem[]) => {
+      setRowItemCounts((prev) => {
+        const newCounts = [...prev]
+        newCounts[rowIndex] = items.length
+        return newCounts
+      })
+    },
+    [],
+  )
+
+  /**
+   * Set up keyboard navigation
+   * This is a simplified version - in production you'd use the navigation service
+   *
+   * In BrightScript:
+   * function onKeyEvent(key as String, press as Boolean) as Boolean
+   *     if press
+   *         if key = "up" then handleUp()
+   *         else if key = "down" then handleDown()
+   *         ' etc...
+   *     end if
+   * end function
+   */
+  useEffect(() => {
+    const handleKeyPress = (e: KeyboardEvent) => {
+      if (!homeData?.data?.StandardCollection?.containers) return
+
+      const containers = homeData.data.StandardCollection.containers
+      const currentRowMax = rowItemCounts[focusedPosition.row] || 0
+
+      switch (e.key) {
+        case "ArrowUp":
+          e.preventDefault()
+          if (focusedPosition.row > 0) {
+            setFocusedPosition((prev) => ({
+              row: prev.row - 1,
+              col: Math.min(prev.col, rowItemCounts[prev.row - 1] - 1 || 0),
+            }))
+          }
+          break
+
+        case "ArrowDown":
+          e.preventDefault()
+          if (focusedPosition.row < containers.length - 1) {
+            setFocusedPosition((prev) => ({
+              row: prev.row + 1,
+              col: Math.min(prev.col, rowItemCounts[prev.row + 1] - 1 || 0),
+            }))
+          }
+          break
+
+        case "ArrowLeft":
+          e.preventDefault()
+          if (focusedPosition.col > 0) {
+            setFocusedPosition((prev) => ({ ...prev, col: prev.col - 1 }))
+          }
+          break
+
+        case "ArrowRight":
+          e.preventDefault()
+          if (focusedPosition.col < currentRowMax - 1) {
+            setFocusedPosition((prev) => ({ ...prev, col: prev.col + 1 }))
+          }
+          break
+
+        case "Enter":
+        case " ":
+          e.preventDefault()
+          console.log(
+            "[BrightScript] Item selected at position:",
+            focusedPosition,
+          )
+          // TODO: Show detail modal
+          break
+      }
+    }
+
+    window.addEventListener("keydown", handleKeyPress)
+    return () => window.removeEventListener("keydown", handleKeyPress)
+  }, [focusedPosition, rowItemCounts, homeData])
+
+  /**
+   * Render loading state
    */
   if (isLoading) {
     return (
@@ -113,13 +192,6 @@ export const HomeScreen: React.FC = () => {
 
   /**
    * Render error state
-   *
-   * In BrightScript:
-   * if m.error <> invalid
-   *     m.errorLabel.text = m.error
-   *     m.errorLabel.visible = true
-   *     m.contentContainer.visible = false
-   * end if
    */
   if (error) {
     return (
@@ -151,7 +223,6 @@ export const HomeScreen: React.FC = () => {
    * In BrightScript:
    * <Rectangle width="1920" height="1080" color="0x1a1d29FF">
    *     <MarkupGrid id="contentGrid" itemComponentName="ContentRow" />
-   *     <DetailModal id="detailModal" visible="false" />
    * </Rectangle>
    */
   return (
@@ -161,67 +232,17 @@ export const HomeScreen: React.FC = () => {
 
       <ContentContainer className="loaded">
         <ContentGrid>
-          {/* Temporarily render container titles to verify data */}
-          {containers.map((container: Container, index: number) => {
-            const title =
-              container.set.text?.title?.full?.set?.default?.content ||
-              container.set.text?.title?.full?.collection?.default?.content ||
-              container.set.text?.title?.full?.default?.content ||
-              `Row ${index + 1}`
-
-            const itemCount = container.set.items?.length || 0
-            const isRefSet = container.set.type === "SetRef"
-            const refId = container.set.refId
-
-            return (
-              <div
-                key={container.set.setId || index}
-                style={{ marginBottom: "20px" }}
-              >
-                <h2
-                  style={{
-                    color: "white",
-                    fontSize: "24px",
-                    margin: "0 90px 10px",
-                    fontFamily:
-                      '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-                  }}
-                >
-                  {title}
-                </h2>
-                <div
-                  style={{
-                    color: "#999",
-                    fontSize: "14px",
-                    margin: "0 90px",
-                  }}
-                >
-                  {isRefSet ? (
-                    <span>
-                      Reference Set (ID: {refId}) - Will load on focus
-                    </span>
-                  ) : (
-                    <span>{itemCount} items available</span>
-                  )}
-                </div>
-                {/* Placeholder for content row */}
-                <div
-                  style={{
-                    height: "169px",
-                    margin: "10px 90px",
-                    backgroundColor: "#2a2d3a",
-                    borderRadius: "4px",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    color: "#666",
-                  }}
-                >
-                  ContentRow Component Coming Next
-                </div>
-              </div>
-            )
-          })}
+          {containers.map((container: Container, index: number) => (
+            <ContentRow
+              key={container.set.setId || `row-${index}`}
+              container={container}
+              rowIndex={index}
+              focusedCol={
+                focusedPosition.row === index ? focusedPosition.col : -1
+              }
+              onItemsLoaded={handleItemsLoaded}
+            />
+          ))}
         </ContentGrid>
       </ContentContainer>
     </HomeScreenContainer>
