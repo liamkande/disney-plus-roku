@@ -12,15 +12,15 @@
  * </component>
  */
 
-import React, { useEffect, useRef, useState } from "react"
+import React, { useCallback, useEffect, useRef, useState } from "react"
 import { Container, ContentItem } from "../../types/disney.types"
+import { ContentTile } from "../ContentTile/ContentTile"
 import { apiService } from "../../services/api.service"
 import {
   EmptyMessage,
   LoadingMessage,
   RowContainer,
   RowTitle,
-  TilePlaceholder,
   TilesContainer,
 } from "./ContentRow.styles"
 
@@ -29,6 +29,10 @@ interface ContentRowProps {
   rowIndex: number
   focusedCol?: number
   onItemsLoaded?: (rowIndex: number, items: ContentItem[]) => void
+  onItemSelected?: (
+    item: ContentItem,
+    position: { row: number; col: number },
+  ) => void
 }
 
 export const ContentRow: React.FC<ContentRowProps> = ({
@@ -36,11 +40,13 @@ export const ContentRow: React.FC<ContentRowProps> = ({
   rowIndex,
   focusedCol = -1,
   onItemsLoaded,
+  onItemSelected,
 }) => {
   const scrollContainerRef = useRef<HTMLDivElement>(null)
   const [isLoadingRefSet, setIsLoadingRefSet] = useState(false)
   const [refSetItems, setRefSetItems] = useState<ContentItem[]>([])
   const [refSetError, setRefSetError] = useState<string | null>(null)
+  const [isInView, setIsInView] = useState(false)
 
   const { set } = container
 
@@ -56,27 +62,60 @@ export const ContentRow: React.FC<ContentRowProps> = ({
   const items = isRefSet ? refSetItems : set.items || []
 
   /**
-   * Load ref set data when component mounts (for first 3 rows)
-   * or when it comes into view
+   * Set up intersection observer for lazy loading
+   * Extra Credit: "Dynamically populate the ref sets as they come into view"
    *
    * In BrightScript:
-   * sub init()
-   *     if m.top.itemContent.refId <> invalid
-   *         loadRefSetData(m.top.itemContent.refId)
+   * sub onFocusPercentChange()
+   *     if m.top.focusPercent > 0.5 and not m.contentLoaded
+   *         loadRefSetData()
    *     end if
    * end sub
    */
   useEffect(() => {
-    const loadRefSet = async () => {
-      if (!isRefSet || !set.refId || refSetItems.length > 0) return
+    if (!isRefSet || refSetItems.length > 0) return
 
-      // // Auto-load first 3 rows for better UX
-      // if (rowIndex > 1) {
-      //   console.log(
-      //     `[BrightScript] Row ${rowIndex}: Waiting for focus to load ref set`,
-      //   )
-      //   return
-      // }
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            setIsInView(true)
+          }
+        })
+      },
+      {
+        rootMargin: "100px", // Load 100px before coming into view
+        threshold: 0.1,
+      },
+    )
+
+    const container = scrollContainerRef.current?.parentElement
+    if (container) {
+      observer.observe(container)
+    }
+
+    return () => {
+      if (container) {
+        observer.unobserve(container)
+      }
+    }
+  }, [isRefSet, refSetItems.length])
+
+  /**
+   * Load ref set data when in view or for first 3 rows
+   */
+  useEffect(() => {
+    const loadRefSet = async () => {
+      if (!isRefSet || !set.refId || refSetItems.length > 0 || isLoadingRefSet)
+        return
+
+      // Load immediately for first 3 rows, or when in view for others
+      const shouldLoad = rowIndex < 3 || isInView
+
+      if (!shouldLoad) {
+        console.log(`[BrightScript] Row ${rowIndex}: Waiting to come into view`)
+        return
+      }
 
       setIsLoadingRefSet(true)
       setRefSetError(null)
@@ -90,7 +129,6 @@ export const ContentRow: React.FC<ContentRowProps> = ({
         // Extract items from the response (structure varies by set type)
         let items: ContentItem[] = []
         if (refData.data) {
-          // The data can be in different formats
           const dataKeys = Object.keys(refData.data)
           const setData = refData.data[dataKeys[0]]
           items = setData?.items || []
@@ -117,21 +155,27 @@ export const ContentRow: React.FC<ContentRowProps> = ({
     }
 
     loadRefSet()
-  }, [isRefSet, set.refId, rowIndex, refSetItems.length, onItemsLoaded])
+  }, [
+    isRefSet,
+    set.refId,
+    rowIndex,
+    refSetItems.length,
+    isLoadingRefSet,
+    isInView,
+    onItemsLoaded,
+  ])
 
   /**
-   * Scroll to focused item
+   * Scroll to focused item with smooth animation
    *
    * In BrightScript:
-   * sub onFocusPercentChange()
-   *     if m.top.focusPercent > 0
-   *         m.posterGrid.animateToItem = m.focusedIndex
-   *     end if
+   * sub onItemFocused()
+   *     m.rowScroller.animateToItem = m.focusedIndex
    * end sub
    */
   useEffect(() => {
-    if (focusedCol >= 0 && scrollContainerRef.current) {
-      const tileWidth = 300 + 20 // width + margin
+    if (focusedCol >= 0 && scrollContainerRef.current && items.length > 0) {
+      const tileWidth = 300 + 20 // width + gap
       const containerWidth = scrollContainerRef.current.offsetWidth
       const scrollLeft =
         focusedCol * tileWidth - containerWidth / 2 + tileWidth / 2
@@ -141,7 +185,22 @@ export const ContentRow: React.FC<ContentRowProps> = ({
         behavior: "smooth",
       })
     }
-  }, [focusedCol])
+  }, [focusedCol, items.length])
+
+  /**
+   * Handle tile selection
+   */
+  const handleTileSelect = useCallback(
+    (item: ContentItem, position: { row: number; col: number }) => {
+      console.log(
+        `[BrightScript] Tile selected: ${item.text?.title?.full?.series?.default?.content || "Unknown"}`,
+      )
+      if (onItemSelected) {
+        onItemSelected(item, { row: rowIndex, col: position.col })
+      }
+    },
+    [rowIndex, onItemSelected],
+  )
 
   /**
    * Render content based on state
@@ -159,84 +218,24 @@ export const ContentRow: React.FC<ContentRowProps> = ({
 
     // Empty state
     if (items.length === 0) {
-      if (isRefSet && rowIndex > 2) {
-        return <EmptyMessage>Navigate here to load content</EmptyMessage>
+      if (isRefSet && !isInView && rowIndex > 2) {
+        return <EmptyMessage>Scroll down to load content</EmptyMessage>
       }
       return <EmptyMessage>No content available</EmptyMessage>
     }
 
-    // Render items
+    // Render items with ContentTile components
     return (
       <TilesContainer ref={scrollContainerRef}>
-        {items.map((item, index) => {
-          // Find image with 1.78 aspect ratio (16:9) as required
-          let imageUrl = ""
-
-          if (item.image) {
-            // Check different image types in order of preference
-            const imageTypes = [
-              "tile",
-              "hero_tile",
-              "hero_collection",
-              "background",
-            ]
-
-            for (const imageType of imageTypes) {
-              const images = item.image[imageType as keyof typeof item.image]
-              if (images && Array.isArray(images)) {
-                // Find 1.78 aspect ratio image
-                const image178 = images.find(
-                  (img) => Math.abs((img.aspectRatio || 0) - 1.78) < 0.01,
-                )
-
-                if (image178) {
-                  imageUrl = image178.url
-                  break
-                }
-
-                // Fallback to first image if no 1.78 found
-                if (!imageUrl && images[0]) {
-                  imageUrl = images[0].url
-                }
-              }
-            }
-          }
-
-          // Extract title
-          const itemTitle =
-            item.text?.title?.full?.series?.default?.content ||
-            item.text?.title?.full?.program?.default?.content ||
-            item.text?.title?.full?.collection?.default?.content ||
-            item.text?.title?.full?.default?.content ||
-            "Untitled"
-
-          return (
-            <TilePlaceholder
-              key={item.contentId || index}
-              isFocused={focusedCol === index}
-              style={{
-                backgroundImage: imageUrl ? `url(${imageUrl})` : undefined,
-              }}
-              title={itemTitle}
-              data-content-id={item.contentId}
-              data-row={rowIndex}
-              data-col={index}
-            >
-              {!imageUrl && (
-                <div
-                  style={{
-                    padding: "20px",
-                    textAlign: "center",
-                    color: "#999",
-                    fontSize: "14px",
-                  }}
-                >
-                  {itemTitle}
-                </div>
-              )}
-            </TilePlaceholder>
-          )
-        })}
+        {items.map((item, index) => (
+          <ContentTile
+            key={item.contentId || `${rowIndex}-${index}`}
+            item={item}
+            isFocused={focusedCol === index}
+            position={{ row: rowIndex, col: index }}
+            onSelect={handleTileSelect}
+          />
+        ))}
       </TilesContainer>
     )
   }
@@ -247,7 +246,7 @@ export const ContentRow: React.FC<ContentRowProps> = ({
    * In BrightScript:
    * <Group>
    *     <Label id="rowTitle" text="Collection Title" />
-   *     <PosterGrid id="posterGrid" />
+   *     <PosterGrid id="posterGrid" itemComponentName="ContentTile" />
    * </Group>
    */
   return (

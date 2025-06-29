@@ -8,10 +8,6 @@
 
 import styled from "styled-components"
 
-interface TileProps {
-  isFocused?: boolean
-}
-
 export const RowContainer = styled.div`
   margin-bottom: 40px;
 
@@ -43,6 +39,7 @@ export const TilesContainer = styled.div`
   padding: 0 90px;
   scroll-behavior: smooth;
   gap: 20px;
+  position: relative;
 
   /* Hide scrollbar for TV experience */
   scrollbar-width: none;
@@ -56,6 +53,13 @@ export const TilesContainer = styled.div`
   overscroll-behavior-x: contain;
   overscroll-behavior-y: none;
 
+  /* Add padding at the end for better scrolling */
+  &::after {
+    content: "";
+    min-width: 90px;
+    height: 1px;
+  }
+
   /* In BrightScript:
    * <PosterGrid
    *   id="posterGrid"
@@ -63,10 +67,18 @@ export const TilesContainer = styled.div`
    *   itemSize="[300, 169]"
    *   itemSpacing="[20, 0]"
    *   numRows="1"
-   *   horizFocusAnimationStyle="fixedFocusWrap"
-   *   drawFocusFeedback="false"
-   * />
-   */
+   *   horiz
+/* In BrightScript:
+ * <PosterGrid
+ *   id="posterGrid"
+ *   translation="[90, 60]"
+ *   itemSize="[300, 169]"
+ *   itemSpacing="[20, 0]"
+ *   numRows="1"
+ *   horizFocusAnimationStyle="fixedFocusWrap"
+ *   drawFocusFeedback="false"
+ * />
+ */
 `
 
 export const LoadingMessage = styled.div`
@@ -75,14 +87,19 @@ export const LoadingMessage = styled.div`
   padding: 50px 90px;
   font-family:
     -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  text-align: center;
+  height: 169px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
 
   /* In BrightScript:
-   * <BusySpinner
-   *   id="loadingSpinner"
-   *   translation="[960, 100]"
-   *   visible="true"
-   * />
-   */
+ * <BusySpinner
+ *   id="loadingSpinner"
+ *   translation="[960, 100]"
+ *   visible="true"
+ * />
+ */
 `
 
 export const EmptyMessage = styled.div`
@@ -92,132 +109,58 @@ export const EmptyMessage = styled.div`
   font-style: italic;
   font-family:
     -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  height: 169px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
 
   /* In BrightScript:
-   * <Label
-   *   text="No content available"
-   *   font="font:SmallSystemFont"
-   *   color="0x666666FF"
-   * />
-   */
+ * <Label
+ *   text="No content available"
+ *   font="font:SmallSystemFont"
+ *   color="0x666666FF"
+ * />
+ */
 `
 
-export const TilePlaceholder = styled.div<TileProps>`
+export const RowLoadingContainer = styled.div`
+  display: flex;
+  gap: 20px;
+  padding: 0 90px;
+  overflow: hidden;
+`
+
+export const TileLoadingSkeleton = styled.div`
   min-width: 300px;
   width: 300px;
   height: 169px;
   background-color: #2a2d3a;
   border-radius: 4px;
   position: relative;
-  cursor: pointer;
-  transition: all 0.2s ease-out;
-  transform-origin: center center;
-  background-size: cover;
-  background-position: center;
-  background-repeat: no-repeat;
-  flex-shrink: 0;
   overflow: hidden;
 
-  /* Focus state - requirement: "The focused tile must be scaled up" */
-  ${(props) =>
-    props.isFocused &&
-    `
-    transform: scale(1.15);
-    z-index: 10;
-    box-shadow: 0 0 0 4px white, 0 10px 30px rgba(0, 0, 0, 0.5);
-  `}
-
-  /* Hover state for mouse users */
-  &:hover {
-    transform: scale(1.05);
-  }
-
-  /* Show title on hover/focus */
   &::after {
-    content: attr(title);
+    content: "";
     position: absolute;
-    bottom: 0;
+    top: 0;
     left: 0;
     right: 0;
-    padding: 10px;
+    bottom: 0;
     background: linear-gradient(
-      to bottom,
+      90deg,
       transparent 0%,
-      rgba(0, 0, 0, 0.9) 100%
+      rgba(255, 255, 255, 0.1) 50%,
+      transparent 100%
     );
-    color: white;
-    font-size: 14px;
-    font-weight: 500;
-    font-family:
-      -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    opacity: ${(props) => (props.isFocused ? 1 : 0)};
-    transition: opacity 0.2s ease-out;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    overflow: hidden;
-  }
-
-  /* Loading shimmer effect */
-  @keyframes shimmer {
-    0% {
-      background-position: -300px 0;
-    }
-    100% {
-      background-position: 300px 0;
-    }
-  }
-
-  &:not([style*="backgroundImage"]) {
-    background: linear-gradient(90deg, #2a2d3a 0%, #3a3d4a 50%, #2a2d3a 100%);
-    background-size: 300px 169px;
     animation: shimmer 1.5s infinite;
   }
 
-  /* In BrightScript:
-   * <Poster
-   *   id="poster"
-   *   width="300"
-   *   height="169"
-   *   loadDisplayMode="scaleToFit"
-   *   scale="[1.15, 1.15]"
-   * />
-   */
-`
-
-export const TileImage = styled.img`
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-`
-
-export const TileTitle = styled.div`
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  padding: 10px;
-  background: linear-gradient(
-    to bottom,
-    transparent 0%,
-    rgba(0, 0, 0, 0.9) 100%
-  );
-  color: white;
-  font-size: 14px;
-  font-weight: 500;
-  font-family:
-    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  overflow: hidden;
-`
-
-export const TileLoadingState = styled.div`
-  width: 100%;
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #666;
-  font-size: 14px;
+  @keyframes shimmer {
+    0% {
+      transform: translateX(-100%);
+    }
+    100% {
+      transform: translateX(100%);
+    }
+  }
 `
