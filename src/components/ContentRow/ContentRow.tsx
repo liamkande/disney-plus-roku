@@ -70,13 +70,13 @@ export const ContentRow: React.FC<ContentRowProps> = ({
     const loadRefSet = async () => {
       if (!isRefSet || !set.refId || refSetItems.length > 0) return
 
-      // Auto-load first 3 rows for better UX
-      if (rowIndex > 2) {
-        console.log(
-          `[BrightScript] Row ${rowIndex}: Waiting for focus to load ref set`,
-        )
-        return
-      }
+      // // Auto-load first 3 rows for better UX
+      // if (rowIndex > 1) {
+      //   console.log(
+      //     `[BrightScript] Row ${rowIndex}: Waiting for focus to load ref set`,
+      //   )
+      //   return
+      // }
 
       setIsLoadingRefSet(true)
       setRefSetError(null)
