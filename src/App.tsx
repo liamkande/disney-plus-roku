@@ -5,9 +5,7 @@ import { HomeScreen } from "./components/HomeScreen/HomeScreen"
 function App() {
   return (
     <div className="App">
-      <header className="App-header">
-        <HomeScreen />
-      </header>
+      <HomeScreen />
     </div>
   )
 }

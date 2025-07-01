@@ -12,7 +12,6 @@ export const HomeScreenContainer = styled.div`
   height: 100vh;
   background-color: #1a1d29;
   position: relative;
-  overflow: hidden;
 `
 
 export const BackgroundGradient = styled.div`
@@ -89,7 +88,7 @@ export const ContentContainer = styled.div`
 export const ContentGrid = styled.div`
   padding: 100px 0 50px 0;
   overflow-y: auto;
-  height: 100%;
+  height: calc(100vh - 150px);
   position: relative;
   z-index: 2;
 

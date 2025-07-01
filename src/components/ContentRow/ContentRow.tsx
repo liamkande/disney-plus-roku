@@ -64,13 +64,6 @@ export const ContentRow: React.FC<ContentRowProps> = ({
   /**
    * Set up intersection observer for lazy loading
    * Extra Credit: "Dynamically populate the ref sets as they come into view"
-   *
-   * In BrightScript:
-   * sub onFocusPercentChange()
-   *     if m.top.focusPercent > 0.5 and not m.contentLoaded
-   *         loadRefSetData()
-   *     end if
-   * end sub
    */
   useEffect(() => {
     if (!isRefSet || refSetItems.length > 0) return
@@ -78,28 +71,80 @@ export const ContentRow: React.FC<ContentRowProps> = ({
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
+          console.log(`[BrightScript] Row ${rowIndex} intersection:`, {
+            isIntersecting: entry.isIntersecting,
+            intersectionRatio: entry.intersectionRatio,
+            boundingClientRect: entry.boundingClientRect,
+          })
+
           if (entry.isIntersecting) {
             setIsInView(true)
           }
         })
       },
       {
+        root: null, // Use viewport as root
         rootMargin: "100px", // Load 100px before coming into view
-        threshold: 0.1,
+        threshold: 0.01, // Trigger when even 1% is visible
       },
     )
 
-    const container = scrollContainerRef.current?.parentElement
-    if (container) {
-      observer.observe(container)
+    // Observe the row container itself, not the parent
+    const rowElement = document.getElementById(`row-${rowIndex}`)
+    if (rowElement) {
+      observer.observe(rowElement)
+      console.log(
+        `[BrightScript] Row ${rowIndex}: Observer attached to element`,
+      )
+    } else {
+      console.warn(
+        `[BrightScript] Row ${rowIndex}: Could not find element to observe`,
+      )
     }
 
     return () => {
-      if (container) {
-        observer.unobserve(container)
+      if (rowElement) {
+        observer.unobserve(rowElement)
       }
     }
-  }, [isRefSet, refSetItems.length])
+  }, [isRefSet, refSetItems.length, rowIndex])
+
+  /**
+   * Manual scroll detection as a fallback
+   */
+  useEffect(() => {
+    if (!isRefSet || refSetItems.length > 0 || rowIndex < 3) return
+
+    const checkVisibility = () => {
+      const rowElement = document.getElementById(`row-${rowIndex}`)
+      if (!rowElement) return
+
+      const rect = rowElement.getBoundingClientRect()
+      const viewHeight =
+        window.innerHeight || document.documentElement.clientHeight
+
+      // Check if element is in viewport
+      const isVisible = rect.top < viewHeight && rect.bottom > 0
+
+      if (isVisible && !isInView) {
+        console.log(
+          `[BrightScript] Row ${rowIndex} now visible via scroll check`,
+        )
+        setIsInView(true)
+      }
+    }
+
+    // Check on mount
+    checkVisibility()
+
+    // Check on scroll
+    const scrollContainer = document.querySelector('[class*="ContentGrid"]')
+    if (scrollContainer) {
+      scrollContainer.addEventListener("scroll", checkVisibility)
+      return () =>
+        scrollContainer.removeEventListener("scroll", checkVisibility)
+    }
+  }, [isRefSet, refSetItems.length, rowIndex, isInView])
 
   /**
    * Load ref set data when in view or for first 3 rows
@@ -113,20 +158,23 @@ export const ContentRow: React.FC<ContentRowProps> = ({
       const shouldLoad = rowIndex < 3 || isInView
 
       if (!shouldLoad) {
-        console.log(`[BrightScript] Row ${rowIndex}: Waiting to come into view`)
+        console.log(
+          `[BrightScript] Row ${rowIndex} (${title}): Waiting to come into view, isInView: ${isInView}`,
+        )
         return
       }
+
+      console.log(
+        `[BrightScript] Row ${rowIndex} (${title}): Loading ref set ${set.refId}`,
+      )
 
       setIsLoadingRefSet(true)
       setRefSetError(null)
 
       try {
-        console.log(
-          `[BrightScript] Row ${rowIndex}: Loading ref set ${set.refId}`,
-        )
         const refData = await apiService.getRefSetData(set.refId)
 
-        // Extract items from the response (structure varies by set type)
+        // Extract items from the response
         let items: ContentItem[] = []
         if (refData.data) {
           const dataKeys = Object.keys(refData.data)
@@ -163,6 +211,7 @@ export const ContentRow: React.FC<ContentRowProps> = ({
     isLoadingRefSet,
     isInView,
     onItemsLoaded,
+    title,
   ])
 
   /**
@@ -242,15 +291,9 @@ export const ContentRow: React.FC<ContentRowProps> = ({
 
   /**
    * Main render
-   *
-   * In BrightScript:
-   * <Group>
-   *     <Label id="rowTitle" text="Collection Title" />
-   *     <PosterGrid id="posterGrid" itemComponentName="ContentTile" />
-   * </Group>
    */
   return (
-    <RowContainer>
+    <RowContainer id={`row-${rowIndex}`}>
       <RowTitle>{title}</RowTitle>
       {renderContent()}
     </RowContainer>
