@@ -112,43 +112,6 @@ export const DetailModal: React.FC<DetailModalProps> = ({
   }, [onClose])
 
   /**
-   * Extract hero image (prefer wider aspect ratios for hero)
-   */
-  const heroImageUrl = useMemo(() => {
-    if (!item?.image) return ""
-
-    // Priority order for hero images
-    const imageTypes: (keyof typeof item.image)[] = [
-      "hero_collection",
-      "hero_tile",
-      "background",
-      "background_details",
-      "tile",
-    ]
-
-    for (const imageType of imageTypes) {
-      const images = item.image[imageType]
-      if (images && Array.isArray(images)) {
-        // For hero, prefer wider images (aspect ratio > 1.78)
-        const wideImage = images.find(
-          (img) => img.aspectRatio && img.aspectRatio >= 1.78,
-        )
-
-        if (wideImage?.url) {
-          return wideImage.url
-        }
-
-        // Fallback to any available image
-        if (images[0]?.url) {
-          return images[0].url
-        }
-      }
-    }
-
-    return ""
-  }, [item?.image])
-
-  /**
    * Extract content details
    */
   const contentDetails = useMemo(() => {
@@ -179,6 +142,92 @@ export const DetailModal: React.FC<DetailModalProps> = ({
       contentId: item.contentId,
     }
   }, [item])
+
+  /**
+   * Extract hero image (prefer wider aspect ratios for hero)
+   * Updated to handle actual Disney+ API structure
+   *
+   * In BrightScript:
+   * function getHeroImage(item as Object) as String
+   *     imageTypes = ["hero_collection", "hero_tile", "background", "background_details", "tile"]
+   *     ratios = ["2.29", "1.78", "1.33"]
+   *
+   *     for each imageType in imageTypes
+   *         if item.image[imageType] <> invalid
+   *             for each ratio in ratios
+   *                 if item.image[imageType][ratio] <> invalid
+   *                     ' Check content types
+   *                     if item.image[imageType][ratio].series?.default?.url <> invalid
+   *                         return item.image[imageType][ratio].series.default.url
+   *                     else if item.image[imageType][ratio].program?.default?.url <> invalid
+   *                         return item.image[imageType][ratio].program.default.url
+   *                     ' ... etc
+   *                 end if
+   *             end for
+   *         end if
+   *     end for
+   *     return ""
+   * end function
+   */
+  const heroImageUrl = useMemo(() => {
+    if (!item?.image) return ""
+
+    // Priority order for hero images (prefer wider/larger images)
+    const imageTypes: (keyof typeof item.image)[] = [
+      "hero_collection",
+      "hero_tile",
+      "background",
+      "background_details",
+      "tile",
+    ]
+
+    // For hero images, prefer wider aspect ratios
+    const preferredRatios = ["2.29", "1.78", "1.33", "0.75"]
+
+    for (const imageType of imageTypes) {
+      const imageCategory = item.image[imageType]
+
+      if (imageCategory && typeof imageCategory === "object") {
+        // Try each aspect ratio in order of preference
+        for (const ratio of preferredRatios) {
+          const ratioData = (imageCategory as any)[ratio]
+          if (ratioData) {
+            // Check different content types
+            const contentTypes = ["series", "program", "collection", "default"]
+
+            for (const contentType of contentTypes) {
+              const content = ratioData[contentType]
+              if (content?.default?.url) {
+                console.log(
+                  `[BrightScript] Found hero image at ${ratio} ratio for: ${contentDetails?.title}`,
+                )
+
+                // For hero images, we want higher resolution
+                // Disney+ URLs support query params for size
+                let highResUrl = content.default.url
+
+                // Replace width parameter if it exists
+                if (highResUrl.includes("width=")) {
+                  highResUrl = highResUrl.replace(/width=\d+/, "width=1920")
+                } else if (highResUrl.includes("?")) {
+                  highResUrl += "&width=1920"
+                } else {
+                  highResUrl += "?width=1920"
+                }
+
+                return highResUrl
+              }
+            }
+          }
+        }
+      }
+    }
+
+    console.warn(
+      `[BrightScript] No hero image found for modal: ${contentDetails?.title}`,
+    )
+    return ""
+  }, [item?.image, contentDetails?.title])
 
   // Don't render if not open
   if (!isOpen || !item || !contentDetails) {
