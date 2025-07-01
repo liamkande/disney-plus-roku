@@ -67,7 +67,6 @@ export const TilesContainer = styled.div`
    *   itemSize="[300, 169]"
    *   itemSpacing="[20, 0]"
    *   numRows="1"
-   *   horiz
 /* In BrightScript:
  * <PosterGrid
  *   id="posterGrid"

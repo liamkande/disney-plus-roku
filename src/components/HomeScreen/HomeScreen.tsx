@@ -14,6 +14,7 @@
 import React, { useCallback, useEffect, useState } from "react"
 import { LoadingIndicator } from "../LoadingIndicator/LoadingIndicator"
 import { ContentRow } from "../ContentRow/ContentRow"
+import { DetailModal } from "../DetailModal/DetailModal"
 import { apiService } from "../../services/api.service"
 import { Container, ContentItem, HomeData } from "../../types/disney.types"
 import {
@@ -31,6 +32,8 @@ export const HomeScreen: React.FC = () => {
   const [homeData, setHomeData] = useState<HomeData | null>(null)
   const [focusedPosition, setFocusedPosition] = useState({ row: 0, col: 0 })
   const [rowItemCounts, setRowItemCounts] = useState<number[]>([])
+  const [selectedItem, setSelectedItem] = useState<ContentItem | null>(null)
+  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false)
 
   /**
    * Load home content on mount
@@ -107,6 +110,50 @@ export const HomeScreen: React.FC = () => {
   )
 
   /**
+   * Get currently focused item from position
+   */
+  const getCurrentlyFocusedItem = useCallback(() => {
+    if (!homeData?.data?.StandardCollection?.containers) return null
+
+    const containers = homeData.data.StandardCollection.containers
+    const currentRow = containers[focusedPosition.row]
+
+    if (!currentRow?.set?.items) return null
+
+    return currentRow.set.items[focusedPosition.col] || null
+  }, [homeData, focusedPosition])
+
+  /**
+   * Handle opening the detail modal
+   *
+   * In BrightScript:
+   * sub showDetailModal()
+   *     item = getCurrentlyFocusedItem()
+   *     if item <> invalid
+   *         m.detailModal = createObject("roSGNode", "DetailModal")
+   *         m.detailModal.content = item
+   *         m.detailModal.visible = true
+   *     end if
+   * end sub
+   */
+  const openDetailModal = useCallback(() => {
+    const item = getCurrentlyFocusedItem()
+    if (item) {
+      setSelectedItem(item)
+      setIsDetailModalOpen(true)
+      console.log("[BrightScript] Opening detail modal for:", item.contentId)
+    }
+  }, [getCurrentlyFocusedItem])
+
+  /**
+   * Handle closing the detail modal
+   */
+  const closeDetailModal = useCallback(() => {
+    setIsDetailModalOpen(false)
+    console.log("[BrightScript] Closing detail modal")
+  }, [])
+
+  /**
    * Set up keyboard navigation
    * This is a simplified version - in production you'd use the navigation service
    *
@@ -121,6 +168,9 @@ export const HomeScreen: React.FC = () => {
    */
   useEffect(() => {
     const handleKeyPress = (e: KeyboardEvent) => {
+      // Don't handle navigation when modal is open
+      if (isDetailModalOpen) return
+
       if (!homeData?.data?.StandardCollection?.containers) return
 
       const containers = homeData.data.StandardCollection.containers
@@ -164,18 +214,20 @@ export const HomeScreen: React.FC = () => {
         case "Enter":
         case " ":
           e.preventDefault()
-          console.log(
-            "[BrightScript] Item selected at position:",
-            focusedPosition,
-          )
-          // TODO: Show detail modal
+          openDetailModal()
           break
       }
     }
 
     window.addEventListener("keydown", handleKeyPress)
     return () => window.removeEventListener("keydown", handleKeyPress)
-  }, [focusedPosition, rowItemCounts, homeData])
+  }, [
+    focusedPosition,
+    rowItemCounts,
+    homeData,
+    isDetailModalOpen,
+    openDetailModal,
+  ])
 
   /**
    * Render loading state
@@ -223,6 +275,7 @@ export const HomeScreen: React.FC = () => {
    * In BrightScript:
    * <Rectangle width="1920" height="1080" color="0x1a1d29FF">
    *     <MarkupGrid id="contentGrid" itemComponentName="ContentRow" />
+   *     <DetailModal id="detailModal" visible="false" />
    * </Rectangle>
    */
   return (
@@ -245,6 +298,13 @@ export const HomeScreen: React.FC = () => {
           ))}
         </ContentGrid>
       </ContentContainer>
+
+      {/* Detail Modal */}
+      <DetailModal
+        item={selectedItem}
+        isOpen={isDetailModalOpen}
+        onClose={closeDetailModal}
+      />
     </HomeScreenContainer>
   )
 }
