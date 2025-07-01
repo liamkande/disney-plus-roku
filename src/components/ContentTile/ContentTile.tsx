@@ -5,6 +5,7 @@
 
 import React, { useCallback, useMemo, useState } from "react"
 import { ContentItem, FocusPosition } from "../../types/disney.types"
+import { getTileImage } from "../../utils/imageHelpers"
 import {
   FocusRing,
   PlaceholderContainer,
@@ -35,63 +36,6 @@ export const ContentTile: React.FC<ContentTileProps> = ({
   const [imageError, setImageError] = useState(false)
 
   /**
-   * Extract optimal image URL (1.78 aspect ratio)
-   * Updated to handle the actual Disney+ API structure
-   *
-   * The structure is: image.tile["1.78"].series.default.url
-   */
-  const imageUrl = useMemo(() => {
-    if (!item.image) return ""
-
-    // Priority order for image types
-    const imageTypes = [
-      "tile",
-      "hero_tile",
-      "hero_collection",
-      "background",
-      "background_details",
-    ]
-
-    for (const imageType of imageTypes) {
-      const imageCategory = item.image[imageType as keyof typeof item.image]
-
-      if (imageCategory && typeof imageCategory === "object") {
-        // Check for 1.78 aspect ratio first (required)
-        const ratio178 = (imageCategory as any)["1.78"]
-        if (ratio178) {
-          // Check different content types
-          const contentTypes = ["series", "program", "collection", "default"]
-
-          for (const contentType of contentTypes) {
-            const content = ratio178[contentType]
-            if (content?.default?.url) {
-              return content.default.url
-            }
-          }
-        }
-
-        // Try other aspect ratios as fallback
-        const ratios = ["2.29", "1.33", "0.75"]
-        for (const ratio of ratios) {
-          const ratioData = (imageCategory as any)[ratio]
-          if (ratioData) {
-            const contentTypes = ["series", "program", "collection", "default"]
-
-            for (const contentType of contentTypes) {
-              const content = ratioData[contentType]
-              if (content?.default?.url) {
-                return content.default.url
-              }
-            }
-          }
-        }
-      }
-    }
-
-    return ""
-  }, [item.image])
-
-  /**
    * Extract title from complex structure
    */
   const title = useMemo(() => {
@@ -113,7 +57,21 @@ export const ContentTile: React.FC<ContentTileProps> = ({
     return "Untitled"
   }, [item.text])
 
-  // ... rest of the component remains the same
+  /**
+   * Extract optimal image URL (1.78 aspect ratio)
+   * Updated to handle the actual Disney+ API structure
+   *
+   * The structure is: image.tile["1.78"].series.default.url
+   */
+  const imageUrl = useMemo(() => {
+    const url = getTileImage(item)
+    if (url) {
+      console.log(`[BrightScript] Found image for ${title}: ${url}`)
+    } else {
+      console.warn(`[BrightScript] No image found for ${title}`)
+    }
+    return url
+  }, [item, title])
 
   /**
    * Get content rating if available
