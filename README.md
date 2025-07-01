@@ -1,4 +1,4 @@
-# Disney+ Roku Clone - Technical Assessment
+# Disney+ TV Interface
 
 This project was built with [Create React App](https://github.com/facebook/create-react-app).
 
