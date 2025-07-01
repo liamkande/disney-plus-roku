@@ -1,26 +1,26 @@
 /**
  * Type definitions for Disney+ content
  * In BrightScript, these would be associative arrays (AA) and roArray
- *
- * BrightScript equivalent:
- * ' Content item structure
- * contentItem = {
- *     contentId: "12345"
- *     title: "The Mandalorian"
- *     image: [{...}]
- *     type: "series"
- * }
  */
 
-// Image asset with different aspect ratios and resolutions
+// Image asset structure with proper nesting
 export interface ImageAsset {
-  aspectRatio: number // 1.78 for 16:9, 1.33 for 4:3, etc.
-  url: string
-  width: number
-  height: number
-  masterUrl?: string
-  masterWidth?: number
-  masterHeight?: number
+  default: {
+    masterId?: string
+    masterWidth?: number
+    masterHeight?: number
+    url: string
+  }
+}
+
+// Content type container for aspect ratios
+export interface AspectRatioContent {
+  [contentType: string]: ImageAsset // 'series', 'program', 'collection', 'default'
+}
+
+// Aspect ratio container for images
+export interface AspectRatioContainer {
+  [aspectRatio: string]: AspectRatioContent // '1.78', '2.29', '1.33', '0.75', etc.
 }
 
 // Text content structure from API
@@ -65,13 +65,14 @@ export interface ContentItem {
   contentType: string
   programType?: string
   image: {
-    tile?: ImageAsset[]
-    hero_tile?: ImageAsset[]
-    title_treatment?: ImageAsset[]
-    title_treatment_layer?: ImageAsset[]
-    background?: ImageAsset[]
-    background_details?: ImageAsset[]
-    hero_collection?: ImageAsset[]
+    tile?: AspectRatioContainer
+    hero_tile?: AspectRatioContainer
+    title_treatment?: AspectRatioContainer
+    title_treatment_layer?: AspectRatioContainer
+    background?: AspectRatioContainer
+    background_details?: AspectRatioContainer
+    hero_collection?: AspectRatioContainer
+    [key: string]: AspectRatioContainer | undefined
   }
   text: TextContent
   type: string

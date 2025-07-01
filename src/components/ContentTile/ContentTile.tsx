@@ -1,14 +1,6 @@
 /**
  * ContentTile Component - Individual content poster with focus scaling
- *
- * In BrightScript:
- * <component name="ContentTile" extends="Group">
- *     <interface>
- *         <field id="itemContent" type="node" onChange="onContentChange"/>
- *         <field id="focusPercent" type="float" onChange="onFocusChange"/>
- *     </interface>
- *     <script type="text/brightscript" uri="ContentTile.brs"/>
- * </component>
+ * Updated to handle actual Disney+ API image structure
  */
 
 import React, { useCallback, useMemo, useState } from "react"
@@ -44,26 +36,15 @@ export const ContentTile: React.FC<ContentTileProps> = ({
 
   /**
    * Extract optimal image URL (1.78 aspect ratio)
+   * Updated to handle the actual Disney+ API structure
    *
-   * BrightScript equivalent:
-   * function getOptimalImage(images as Object) as String
-   *     for each imageType in ["tile", "hero_tile", "hero_collection"]
-   *         if images[imageType] <> invalid
-   *             for each image in images[imageType]
-   *                 if Abs(image.aspectRatio - 1.78) < 0.01
-   *                     return image.url
-   *                 end if
-   *             end for
-   *         end if
-   *     end for
-   *     return ""
-   * end function
+   * The structure is: image.tile["1.78"].series.default.url
    */
   const imageUrl = useMemo(() => {
     if (!item.image) return ""
 
     // Priority order for image types
-    const imageTypes: (keyof typeof item.image)[] = [
+    const imageTypes = [
       "tile",
       "hero_tile",
       "hero_collection",
@@ -72,24 +53,38 @@ export const ContentTile: React.FC<ContentTileProps> = ({
     ]
 
     for (const imageType of imageTypes) {
-      const images = item.image[imageType]
-      if (images && Array.isArray(images)) {
-        // Find 1.78 aspect ratio image (16:9) as required
-        const targetImage = images.find(
-          (img) => img.aspectRatio && Math.abs(img.aspectRatio - 1.78) < 0.01,
-        )
+      const imageCategory = item.image[imageType as keyof typeof item.image]
 
-        if (targetImage?.url) {
-          return targetImage.url
+      if (imageCategory && typeof imageCategory === "object") {
+        // Check for 1.78 aspect ratio first (required)
+        const ratio178 = (imageCategory as any)["1.78"]
+        if (ratio178) {
+          // Check different content types
+          const contentTypes = ["series", "program", "collection", "default"]
+
+          for (const contentType of contentTypes) {
+            const content = ratio178[contentType]
+            if (content?.default?.url) {
+              return content.default.url
+            }
+          }
         }
-      }
-    }
 
-    // Fallback: try to find any 16:9 image
-    for (const imageType of imageTypes) {
-      const images = item.image[imageType]
-      if (images?.[0]?.url) {
-        return images[0].url
+        // Try other aspect ratios as fallback
+        const ratios = ["2.29", "1.33", "0.75"]
+        for (const ratio of ratios) {
+          const ratioData = (imageCategory as any)[ratio]
+          if (ratioData) {
+            const contentTypes = ["series", "program", "collection", "default"]
+
+            for (const contentType of contentTypes) {
+              const content = ratioData[contentType]
+              if (content?.default?.url) {
+                return content.default.url
+              }
+            }
+          }
+        }
       }
     }
 
@@ -98,17 +93,6 @@ export const ContentTile: React.FC<ContentTileProps> = ({
 
   /**
    * Extract title from complex structure
-   *
-   * BrightScript equivalent:
-   * function getTitle(text as Object) as String
-   *     if text?.title?.full?.series?.default?.content <> invalid
-   *         return text.title.full.series.default.content
-   *     else if text?.title?.full?.program?.default?.content <> invalid
-   *         return text.title.full.program.default.content
-   *     ' ... etc
-   *     end if
-   *     return "Untitled"
-   * end function
    */
   const title = useMemo(() => {
     const titleObj = item.text?.title?.full
@@ -128,6 +112,8 @@ export const ContentTile: React.FC<ContentTileProps> = ({
 
     return "Untitled"
   }, [item.text])
+
+  // ... rest of the component remains the same
 
   /**
    * Get content rating if available
