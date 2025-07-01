@@ -11,12 +11,13 @@
  * </component>
  */
 
-import React, { useCallback, useEffect, useState } from "react"
+import React, { useCallback, useEffect, useMemo, useState } from "react"
 import { LoadingIndicator } from "../LoadingIndicator/LoadingIndicator"
 import { ContentRow } from "../ContentRow/ContentRow"
 import { DetailModal } from "../DetailModal/DetailModal"
 import { apiService } from "../../services/api.service"
 import { Container, ContentItem, HomeData } from "../../types/disney.types"
+import { FocusPosition, useRokuNavigation } from "../../hooks/useRokuNavigation"
 import {
   BackgroundGradient,
   ContentContainer,
@@ -30,7 +31,6 @@ export const HomeScreen: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [homeData, setHomeData] = useState<HomeData | null>(null)
-  const [focusedPosition, setFocusedPosition] = useState({ row: 0, col: 0 })
   const [rowItemCounts, setRowItemCounts] = useState<number[]>([])
   const [selectedItem, setSelectedItem] = useState<ContentItem | null>(null)
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false)
@@ -110,18 +110,28 @@ export const HomeScreen: React.FC = () => {
   )
 
   /**
+   * Prepare navigation configuration
+   */
+  const rowCount = useMemo(() => {
+    return homeData?.data?.StandardCollection?.containers?.length || 0
+  }, [homeData])
+
+  /**
    * Get currently focused item from position
    */
-  const getCurrentlyFocusedItem = useCallback(() => {
-    if (!homeData?.data?.StandardCollection?.containers) return null
+  const getCurrentlyFocusedItem = useCallback(
+    (position: FocusPosition): ContentItem | null => {
+      if (!homeData?.data?.StandardCollection?.containers) return null
 
-    const containers = homeData.data.StandardCollection.containers
-    const currentRow = containers[focusedPosition.row]
+      const containers = homeData.data.StandardCollection.containers
+      const currentRow = containers[position.row]
 
-    if (!currentRow?.set?.items) return null
+      if (!currentRow?.set?.items) return null
 
-    return currentRow.set.items[focusedPosition.col] || null
-  }, [homeData, focusedPosition])
+      return currentRow.set.items[position.col] || null
+    },
+    [homeData],
+  )
 
   /**
    * Handle opening the detail modal
@@ -136,14 +146,17 @@ export const HomeScreen: React.FC = () => {
    *     end if
    * end sub
    */
-  const openDetailModal = useCallback(() => {
-    const item = getCurrentlyFocusedItem()
-    if (item) {
-      setSelectedItem(item)
-      setIsDetailModalOpen(true)
-      console.log("[BrightScript] Opening detail modal for:", item.contentId)
-    }
-  }, [getCurrentlyFocusedItem])
+  const openDetailModal = useCallback(
+    (position: FocusPosition): void => {
+      const item = getCurrentlyFocusedItem(position)
+      if (item) {
+        setSelectedItem(item)
+        setIsDetailModalOpen(true)
+        console.log("[BrightScript] Opening detail modal for:", item.contentId)
+      }
+    },
+    [getCurrentlyFocusedItem],
+  )
 
   /**
    * Handle closing the detail modal
@@ -154,80 +167,21 @@ export const HomeScreen: React.FC = () => {
   }, [])
 
   /**
-   * Set up keyboard navigation
-   * This is a simplified version - in production you'd use the navigation service
-   *
-   * In BrightScript:
-   * function onKeyEvent(key as String, press as Boolean) as Boolean
-   *     if press
-   *         if key = "up" then handleUp()
-   *         else if key = "down" then handleDown()
-   *         ' etc...
-   *     end if
-   * end function
+   * Initialize Roku-style navigation
    */
-  useEffect(() => {
-    const handleKeyPress = (e: KeyboardEvent) => {
-      // Don't handle navigation when modal is open
-      if (isDetailModalOpen) return
-
-      if (!homeData?.data?.StandardCollection?.containers) return
-
-      const containers = homeData.data.StandardCollection.containers
-      const currentRowMax = rowItemCounts[focusedPosition.row] || 0
-
-      switch (e.key) {
-        case "ArrowUp":
-          e.preventDefault()
-          if (focusedPosition.row > 0) {
-            setFocusedPosition((prev) => ({
-              row: prev.row - 1,
-              col: Math.min(prev.col, rowItemCounts[prev.row - 1] - 1 || 0),
-            }))
-          }
-          break
-
-        case "ArrowDown":
-          e.preventDefault()
-          if (focusedPosition.row < containers.length - 1) {
-            setFocusedPosition((prev) => ({
-              row: prev.row + 1,
-              col: Math.min(prev.col, rowItemCounts[prev.row + 1] - 1 || 0),
-            }))
-          }
-          break
-
-        case "ArrowLeft":
-          e.preventDefault()
-          if (focusedPosition.col > 0) {
-            setFocusedPosition((prev) => ({ ...prev, col: prev.col - 1 }))
-          }
-          break
-
-        case "ArrowRight":
-          e.preventDefault()
-          if (focusedPosition.col < currentRowMax - 1) {
-            setFocusedPosition((prev) => ({ ...prev, col: prev.col + 1 }))
-          }
-          break
-
-        case "Enter":
-        case " ":
-          e.preventDefault()
-          openDetailModal()
-          break
-      }
-    }
-
-    window.addEventListener("keydown", handleKeyPress)
-    return () => window.removeEventListener("keydown", handleKeyPress)
-  }, [
-    focusedPosition,
-    rowItemCounts,
-    homeData,
-    isDetailModalOpen,
-    openDetailModal,
-  ])
+  const navigation = useRokuNavigation({
+    rows: rowCount,
+    cols: rowItemCounts,
+    onSelect: openDetailModal,
+    onFocusChange: (position: FocusPosition): void => {
+      console.log(
+        `[BrightScript] Focus changed to row: ${position.row}, col: ${position.col}`,
+      )
+    },
+    enabled: !isDetailModalOpen && !isLoading && !error,
+    wrap: false,
+    initialPosition: { row: 0, col: 0 },
+  })
 
   /**
    * Render loading state
@@ -291,7 +245,9 @@ export const HomeScreen: React.FC = () => {
               container={container}
               rowIndex={index}
               focusedCol={
-                focusedPosition.row === index ? focusedPosition.col : -1
+                navigation.focusPosition.row === index
+                  ? navigation.focusPosition.col
+                  : -1
               }
               onItemsLoaded={handleItemsLoaded}
             />
