@@ -117,62 +117,24 @@ export const HomeScreen: React.FC = () => {
   }, [homeData])
 
   /**
-   * Get currently focused item from position
-   */
-  const getCurrentlyFocusedItem = useCallback(
-    (position: FocusPosition): ContentItem | null => {
-      if (!homeData?.data?.StandardCollection?.containers) return null
-
-      const containers = homeData.data.StandardCollection.containers
-      const currentRow = containers[position.row]
-
-      if (!currentRow?.set?.items) return null
-
-      return currentRow.set.items[position.col] || null
-    },
-    [homeData],
-  )
-
-  /**
-   * Handle opening the detail modal
-   *
-   * In BrightScript:
-   * sub showDetailModal()
-   *     item = getCurrentlyFocusedItem()
-   *     if item <> invalid
-   *         m.detailModal = createObject("roSGNode", "DetailModal")
-   *         m.detailModal.content = item
-   *         m.detailModal.visible = true
-   *     end if
-   * end sub
-   */
-  const openDetailModal = useCallback(
-    (position: FocusPosition): void => {
-      const item = getCurrentlyFocusedItem(position)
-      if (item) {
-        setSelectedItem(item)
-        setIsDetailModalOpen(true)
-        console.log("[BrightScript] Opening detail modal for:", item.contentId)
-      }
-    },
-    [getCurrentlyFocusedItem],
-  )
-
-  /**
-   * Handle closing the detail modal
-   */
-  const closeDetailModal = useCallback(() => {
-    setIsDetailModalOpen(false)
-    console.log("[BrightScript] Closing detail modal")
-  }, [])
-
-  /**
    * Initialize Roku-style navigation
    */
   const navigation = useRokuNavigation({
     rows: rowCount,
     cols: rowItemCounts,
-    onSelect: openDetailModal,
+    onSelect: (position) => {
+      // For keyboard navigation, click the element
+      const element = document.querySelector(
+        `[data-row="${position.row}"][data-col="${position.col}"]`,
+      ) as HTMLElement
+
+      if (element) {
+        console.log(
+          `[BrightScript] Keyboard selection at row ${position.row}, col ${position.col}`,
+        )
+        element.click()
+      }
+    },
     onFocusChange: (position: FocusPosition): void => {
       console.log(
         `[BrightScript] Focus changed to row: ${position.row}, col: ${position.col}`,
@@ -182,6 +144,46 @@ export const HomeScreen: React.FC = () => {
     wrap: false,
     initialPosition: { row: 0, col: 0 },
   })
+
+  /**
+   * Handle item selection - show detail modal
+   * Extra Credit: "Allow interaction or selection of a tile"
+   *
+   * In BrightScript:
+   * sub onItemSelected(event as Object)
+   *     item = event.getData()
+   *     m.detailModal.content = item
+   *     m.detailModal.visible = true
+   *     m.detailModal.setFocus(true)
+   * end sub
+   */
+  const handleItemSelected = useCallback(
+    (item: ContentItem, position: { row: number; col: number }) => {
+      console.log("[BrightScript] Item selected:", {
+        title:
+          item.text?.title?.full?.series?.default?.content ||
+          item.text?.title?.full?.program?.default?.content ||
+          "Unknown",
+        position,
+        contentId: item.contentId,
+      })
+
+      setSelectedItem(item)
+      setIsDetailModalOpen(true)
+
+      // Update navigation focus to match
+      navigation.setFocus(position)
+    },
+    [navigation],
+  )
+
+  /**
+   * Handle closing the detail modal
+   */
+  const closeDetailModal = useCallback(() => {
+    setIsDetailModalOpen(false)
+    console.log("[BrightScript] Closing detail modal")
+  }, [])
 
   /**
    * Render loading state
@@ -250,6 +252,7 @@ export const HomeScreen: React.FC = () => {
                   : -1
               }
               onItemsLoaded={handleItemsLoaded}
+              onItemSelected={handleItemSelected}
             />
           ))}
         </ContentGrid>

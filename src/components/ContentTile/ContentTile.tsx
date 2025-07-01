@@ -24,6 +24,8 @@ interface ContentTileProps {
   isFocused: boolean
   position: FocusPosition
   onSelect?: (item: ContentItem, position: FocusPosition) => void
+  "data-row"?: number
+  "data-col"?: number
 }
 
 export const ContentTile: React.FC<ContentTileProps> = ({
@@ -31,6 +33,8 @@ export const ContentTile: React.FC<ContentTileProps> = ({
   isFocused,
   position,
   onSelect,
+  "data-row": dataRow,
+  "data-col": dataCol,
 }) => {
   const [imageLoaded, setImageLoaded] = useState(false)
   const [imageError, setImageError] = useState(false)
@@ -147,6 +151,8 @@ export const ContentTile: React.FC<ContentTileProps> = ({
         tabIndex={-1}
         role="button"
         aria-label={title}
+        data-row={dataRow}
+        data-col={dataCol}
       >
         <PlaceholderContainer>
           <ShimmerEffect />
@@ -186,6 +192,8 @@ export const ContentTile: React.FC<ContentTileProps> = ({
       role="button"
       aria-label={title}
       data-content-id={item.contentId}
+      data-row={dataRow}
+      data-col={dataCol}
     >
       {/* Shadow for depth (Disney magic) */}
       <TileShadow isFocused={isFocused} />

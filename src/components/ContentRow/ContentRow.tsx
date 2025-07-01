@@ -254,6 +254,9 @@ export const ContentRow: React.FC<ContentRowProps> = ({
   /**
    * Render content based on state
    */
+  /**
+   * Render content based on state
+   */
   const renderContent = () => {
     // Loading state for ref sets
     if (isLoadingRefSet) {
@@ -283,6 +286,8 @@ export const ContentRow: React.FC<ContentRowProps> = ({
             isFocused={focusedCol === index}
             position={{ row: rowIndex, col: index }}
             onSelect={handleTileSelect}
+            data-row={rowIndex}
+            data-col={index}
           />
         ))}
       </TilesContainer>
