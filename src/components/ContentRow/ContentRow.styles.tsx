@@ -40,6 +40,7 @@ export const TilesContainer = styled.div`
   scroll-behavior: smooth;
   gap: 20px;
   position: relative;
+  justify-content: flex-start;
 
   /* Hide scrollbar for TV experience */
   scrollbar-width: none;
